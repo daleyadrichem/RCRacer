@@ -1,0 +1,55 @@
+[project]
+name = "rc_racer"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+authors = [
+    { name = "Daley Adrichem" }
+]
+
+keywords = ["rc", "racer", "ai"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "numpy>=2.2.6",
+    "pygame>=2.6.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6.0",
+    "pytest>=8.0.0",
+    "mypy>=1.10.0",
+]
+api = [
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+]
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx-autobuild>=2024.0.0",
+]
+
+[build-system]
+requires = ["uv-build"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+ignore_missing_imports = true
+
+[tool.uv]
+package = true
