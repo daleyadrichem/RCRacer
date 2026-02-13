@@ -18,13 +18,13 @@ import pygame
 import numpy as np
 from typing import Tuple
 
-from rc_racer.core.track import Track
-from rc_racer.core.vehicle_model import VehicleModel, VehicleParams
+from rc_racer.gui.track_view import TrackView, TrackViewConfig
+from rc_racer.core.vehicle_factory import VehicleFactory
 from rc_racer.env.environment import Environment, EnvironmentConfig
 from rc_racer.env.collision import CollisionChecker, CollisionConfig
 from rc_racer.env.reward import RewardSystem, RewardConfig
 from rc_racer.env.termination import TerminationCondition, TerminationConfig
-from rc_racer.gui.track_view import TrackView, TrackViewConfig
+from rc_racer.core.track_factory import TrackFactory
 from rc_racer.gui.agent_view import PygameAgentView, AgentViewConfig
 from rc_racer.agents.forward_controller import ForwardController
 from rc_racer.simulation.runner_realtime import (
@@ -34,36 +34,6 @@ from rc_racer.simulation.runner_realtime import (
 )
 
 Color = Tuple[int, int, int]
-
-
-# ================================================================
-# BUILDERS
-# ================================================================
-
-
-def build_simple_straight_track() -> Track:
-    xs = np.linspace(0.0, 80.0, 200)
-    ys = np.zeros_like(xs)
-    centerline = np.column_stack((xs, ys))
-    return Track(centerline=centerline, width=8.0)
-
-
-def build_vehicle_model() -> VehicleModel:
-    params = VehicleParams(
-        wheelbase=2.5,
-        rear_axle_ratio=0.5,
-        max_steering_angle=0.6,
-        max_steering_rate=1.5,
-        max_acceleration=6.0,
-        max_velocity=25.0,
-        mu=1.0,
-        g=9.81,
-        a_lat_max=7.0,
-        mass=1200.0,
-        c_rr=0.015,
-        c_d_a_over_m=0.0004,
-    )
-    return VehicleModel(params)
 
 
 # ================================================================
@@ -81,8 +51,8 @@ def main() -> None:
     # Core components
     # ------------------------------------------------------------
 
-    track = build_simple_straight_track()
-    vehicle_model = build_vehicle_model()
+    track = TrackFactory.create("curved_s_track")
+    vehicle_model = VehicleFactory.create_model("default")
 
     collision_checker = CollisionChecker(
         track,
