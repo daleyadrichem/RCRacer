@@ -32,10 +32,10 @@ import numpy as np
 from rc_racer.core.track import Track
 from rc_racer.core.vehicle_model import VehicleModel, VehicleParams
 from rc_racer.core.state import State
-from rc_racer.env.environment import Environment, EnvironmentConfig
-from rc_racer.env.collision import CollisionChecker
-from rc_racer.env.reward import RewardSystem, RewardConfig
-from rc_racer.env.termination import TerminationCondition, TerminationConfig
+from rc_racer.environment.environment import Environment, EnvironmentConfig
+from rc_racer.environment.collision import CollisionChecker
+from rc_racer.environment.reward import RewardSystem, RewardConfig
+from rc_racer.environment.termination import TerminationCondition, TerminationConfig
 from rc_racer.agents.pid_controller import PIDLineFollower, PIDConfig
 from rc_racer.agents.mpcc_controller import MpccController, MpccConfig
 from rc_racer.simulation.runner_realtime import (

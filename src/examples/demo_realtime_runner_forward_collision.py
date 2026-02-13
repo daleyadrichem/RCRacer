@@ -20,10 +20,10 @@ from typing import Tuple
 
 from rc_racer.gui.track_view import TrackView, TrackViewConfig
 from rc_racer.core.vehicle_factory import VehicleFactory
-from rc_racer.env.environment import Environment, EnvironmentConfig
-from rc_racer.env.collision import CollisionChecker, CollisionConfig
-from rc_racer.env.reward import RewardSystem, RewardConfig
-from rc_racer.env.termination import TerminationCondition, TerminationConfig
+from rc_racer.environment.environment import Environment, EnvironmentConfig
+from rc_racer.environment.collision import CollisionChecker, CollisionConfig
+from rc_racer.environment.reward import RewardSystem, RewardConfig
+from rc_racer.environment.termination import TerminationCondition, TerminationConfig
 from rc_racer.core.track_factory import TrackFactory
 from rc_racer.gui.agent_view import PygameAgentView, AgentViewConfig
 from rc_racer.agents.forward_controller import ForwardController
