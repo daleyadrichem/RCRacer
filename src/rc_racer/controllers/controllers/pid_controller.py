@@ -45,7 +45,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from rc_racer.agents.base_controller import BaseController
-from controllers.utils.genome_interface import GenomeInterface
+from rc_racer.controllers.utils.genome_interface import GenomeInterface
 from rc_racer.core.state import State
 from rc_racer.core.track import Track
 

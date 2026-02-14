@@ -35,7 +35,7 @@ from rc_racer.environment.termination import TerminationCondition, TerminationCo
 from rc_racer.gui.track_view import TrackView, TrackViewConfig
 from rc_racer.gui.agent_view import PygameAgentView, AgentViewConfig
 from rc_racer.gui.debug_bar_view import DebugBarView
-from controllers.controllers.pid_controller import PIDLineFollower, PIDConfig
+from rc_racer.controllers.controllers.pid_controller import PIDLineFollower, PIDConfig
 from rc_racer.simulation.runner_realtime import (
     RealtimeRunner,
     RunnerConfig,

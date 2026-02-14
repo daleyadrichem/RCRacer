@@ -21,7 +21,7 @@ from rc_racer.environment.reward import RewardSystem, RewardConfig
 from rc_racer.environment.termination import TerminationCondition, TerminationConfig
 from rc_racer.simulation.evaluator import Evaluator, EvaluatorConfig
 from rc_racer.agents.base_controller import BaseController
-from controllers.controllers.pid_controller import PIDLineFollower, PIDConfig
+from rc_racer.controllers.controllers.pid_controller import PIDLineFollower, PIDConfig
 
 
 # ================================================================

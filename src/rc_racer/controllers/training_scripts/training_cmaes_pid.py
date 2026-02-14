@@ -30,8 +30,8 @@ from typing import List
 import numpy as np
 from numpy.typing import NDArray
 
-from controllers.controllers.pid_controller import PIDLineFollower, PIDConfig
-from controllers.trainers.cmaes import (
+from rc_racer.controllers.controllers.pid_controller import PIDLineFollower, PIDConfig
+from rc_racer.controllers.trainers.cmaes import (
     CMAESTrainer,
     CMAESTrainerConfig,
 )

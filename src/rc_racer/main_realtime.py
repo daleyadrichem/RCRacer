@@ -28,7 +28,7 @@ from rc_racer.simulation.runner_realtime import (
     SyncControllerProvider,
 )
 from rc_racer.gui.app import App, AppConfig
-from controllers.controllers.pid_controller import PIDLineFollower, PIDConfig
+from rc_racer.controllers.controllers.pid_controller import PIDLineFollower, PIDConfig
 
 
 # ================================================================
