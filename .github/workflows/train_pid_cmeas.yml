@@ -1,0 +1,41 @@
+name: Train PID Controller (CMA-ES)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------
+      # Install uv
+      # ------------------------------------------------------------
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      # ------------------------------------------------------------
+      # Sync project (uses pyproject.toml + uv.lock)
+      # ------------------------------------------------------------
+      - name: Install dependencies
+        run: uv sync
+
+      # ------------------------------------------------------------
+      # Run training
+      # ------------------------------------------------------------
+      - name: Run PID CMA-ES training
+        run: uv run python train_pid_cmaes_single_track.py
+
+      # ------------------------------------------------------------
+      # Upload trained genome (optional)
+      # ------------------------------------------------------------
+      - name: Upload best genome
+        uses: actions/upload-artifact@v4
+        with:
+          name: best-genome
+          path: runs/train_pid_cmaes_single_track/best_genome.json
