@@ -339,18 +339,19 @@ class PygameAgentView(BaseAgentView):
         width : int
             Arc line width in pixels.
         """
-        # pygame arc angles are in radians and in screen coords, but we render
-        # using a symmetric visual approximation: flip sign for y inversion.
-        # World angle theta -> screen angle approx -theta
-        a0 = -heading_angle
-        a1 = -velocity_angle
+        # ------------------------------------------------------------
+        # Compute signed drift angle in (-pi, pi]
+        # ------------------------------------------------------------
 
-        # normalize to shortest direction
         def wrap_pi(a: float) -> float:
             return (a + np.pi) % (2.0 * np.pi) - np.pi
 
-        d = wrap_pi(a1 - a0)
-        a1 = a0 + d
+        # Signed drift angle (velocity direction relative to heading)
+        drift = wrap_pi(velocity_angle - heading_angle)
+
+        # Convert world angles to screen angles (invert sign because screen y is flipped)
+        start_angle = -heading_angle
+        end_angle = start_angle - drift  # subtract because of screen inversion
 
         rect = pygame.Rect(
             origin_screen[0] - radius_px,
@@ -359,7 +360,14 @@ class PygameAgentView(BaseAgentView):
             2 * radius_px,
         )
 
-        pygame.draw.arc(surface, self._config.drift_arc_color, rect, a0, a1, width)
+        pygame.draw.arc(
+            surface,
+            self._config.drift_arc_color,
+            rect,
+            start_angle,
+            end_angle,
+            width,
+        )
 
     # ------------------------------------------------------------------
     # Public draw

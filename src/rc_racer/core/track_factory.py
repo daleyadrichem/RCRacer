@@ -103,6 +103,72 @@ def _closed_challenging(
     centerline = np.column_stack((x, y))
     return Track(centerline=centerline, width=width)
 
+def _f1_like_closed(
+    num_points_per_segment: int = 200,
+    width: float = 12.0,
+) -> Track:
+    """
+    Create a Monza-inspired closed circuit scaled down by factor 5.
+
+    All geometric dimensions from the original Monza-like layout
+    are divided by 5 while preserving proportions.
+
+    Parameters
+    ----------
+    num_points_per_segment : int
+        Resolution per geometric segment.
+    width : float
+        Track width in meters.
+
+    Returns
+    -------
+    Track
+        Immutable closed Track instance.
+    """
+
+    def arc(
+        center: np.ndarray,
+        radius: float,
+        start_angle: float,
+        end_angle: float,
+    ) -> np.ndarray:
+        angles = np.linspace(start_angle, end_angle, num_points_per_segment)
+        x = center[0]  + (radius ) * np.cos(angles)
+        y = center[1]  + (radius ) * np.sin(angles)
+        return np.column_stack((x, y))
+
+    def straight(p0: np.ndarray, p1: np.ndarray) -> np.ndarray:
+        xs = np.linspace(p0[0] , p1[0] , num_points_per_segment)
+        ys = np.linspace(p0[1] , p1[1] , num_points_per_segment)
+        return np.column_stack((xs, ys))
+
+    segments: list[np.ndarray] = []
+
+    # ------------------------------------------------------------
+    # Start/Finish Straight
+    # ------------------------------------------------------------
+    p_start = np.array([0.0, 0.0])
+    p_t1 = np.array([100.0, 0.0])
+    segments.append(straight(p_start, p_t1))
+
+    segments.append(
+        arc(center=np.array([100.0, 30.0]), radius=30.0,
+            start_angle=-np.pi / 2.0, end_angle=0.0)
+    )
+
+    segments.append(
+        arc(center=np.array([160.0, 30.0]), radius=30.0,
+            start_angle=np.pi, end_angle=0.0)
+    )
+
+    segments.append(straight(np.array([190.0, 0.0]), np.array([190.0, 20.0])))
+
+
+    centerline = np.vstack(segments).astype(np.float64)
+
+    return Track(centerline=centerline, width=width)
+
+
 
 # ================================================================
 # Registry Setup
@@ -114,6 +180,7 @@ _track_registry.register("curved_s_track", _curved_s_track)
 _track_registry.register("sinusoidal_open", _sinusoidal_open)
 _track_registry.register("closed_circle", _closed_circle)
 _track_registry.register("closed_challenging", _closed_challenging)
+_track_registry.register("f1_like_closed", _f1_like_closed)
 
 
 # ================================================================

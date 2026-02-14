@@ -1,7 +1,7 @@
 """
-app.py
+rc_racer.gui.app
 
-Standalone GUI demo application.
+Standalone passive GUI application for RC Racer.
 
 GUI Layer
 ---------
@@ -11,20 +11,19 @@ GUI Layer
 - No randomness
 - Deterministic rendering
 
-This file builds a curved S-track exactly like the
-demo_realtime_runner_pid_curved.py example.
-
-Architecture Reference
-----------------------
-See project architecture specification.
+Architecture
+------------
+- Simulation loop is authoritative.
+- GUI only receives immutable state snapshots.
+- Track is injected (no construction inside GUI).
+- Never modifies simulation state.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Optional
 
-import numpy as np
 import pygame
 
 from rc_racer.core.track import Track
@@ -35,41 +34,14 @@ from rc_racer.gui.dashboard_view import (
     PygameDashboardView,
     make_dashboard_theme,
 )
+from rc_racer.gui.debug_bar_view import DebugBarView, DebugBarConfig
+
 
 Color = Tuple[int, int, int]
 
 
 # ================================================================
-# TRACK BUILDER
-# ================================================================
-
-
-def build_curved_s_track() -> Track:
-    """
-    Build a smooth S-shaped track.
-
-    Returns
-    -------
-    Track
-        Immutable track instance.
-    """
-    xs = np.linspace(0.0, 120.0, 600)
-
-    ys = (
-        8.0 * np.sin(0.08 * xs)
-        + 4.0 * np.sin(0.18 * xs)
-    )
-
-    centerline = np.column_stack((xs, ys)).astype(np.float64)
-
-    return Track(
-        centerline=centerline,
-        width=10.0,
-    )
-
-
-# ================================================================
-# CONFIG
+# CONFIGURATION
 # ================================================================
 
 
@@ -81,19 +53,28 @@ class AppConfig:
     Parameters
     ----------
     width : int
-        Window width.
+        Window width in pixels.
     height : int
-        Window height.
+        Window height in pixels.
     pixels_per_meter : float
-        World-to-screen scale.
-    background_color : Color
+        World-to-screen scaling factor.
+    background_color : tuple[int, int, int]
         RGB background color.
+    screen_offset_px : tuple[int, int]
+        Pixel offset for world origin placement.
+    window_title : str
+        Window caption.
+    show_debug : bool
+        Whether to render debug bar overlay.
     """
 
     width: int = 1200
     height: int = 700
     pixels_per_meter: float = 6.0
     background_color: Color = (25, 25, 25)
+    screen_offset_px: Tuple[int, int] = (100, 400)
+    window_title: str = "RC Racer"
+    show_debug: bool = False
 
 
 # ================================================================
@@ -110,72 +91,88 @@ class App:
     - Does NOT step environment.
     - Does NOT call controller.
     - Receives state snapshots externally.
+    - Safe to run alongside RealtimeRunner.
     """
 
-    def __init__(self, config: AppConfig) -> None:
-        """
-        Initialize GUI.
+    # ------------------------------------------------------------
 
-        Parameters
-        ----------
-        config : AppConfig
-        """
+    def __init__(
+        self,
+        track: Track,
+        config: AppConfig,
+    ) -> None:
         pygame.init()
 
+        self._track: Track = track
         self._config: AppConfig = config
+
         self._screen: pygame.Surface = pygame.display.set_mode(
             (config.width, config.height)
         )
-        pygame.display.set_caption("RC Racer - Curved Track Demo")
+        pygame.display.set_caption(config.window_title)
 
         self._clock: pygame.time.Clock = pygame.time.Clock()
 
-        # --------------------------------------------------------
-        # Track
-        # --------------------------------------------------------
-
-        self._track: Track = build_curved_s_track()
-        offset = (100, 400)
-
+        # Track View
         self._track_view = TrackView(
-            self._track,
-            TrackViewConfig(
+            track=self._track,
+            config=TrackViewConfig(
                 pixels_per_meter=config.pixels_per_meter,
             ),
-            screen_offset_px=offset,
+            screen_offset_px=config.screen_offset_px,
         )
 
+        # Agent View
         self._agent_view = PygameAgentView(
             AgentViewConfig(
                 pixels_per_meter=config.pixels_per_meter,
             ),
-            screen_offset_px=offset,
+            screen_offset_px=config.screen_offset_px,
         )
 
-        # --------------------------------------------------------
         # Dashboard
-        # --------------------------------------------------------
-
         dashboard_config = make_dashboard_theme(
             theme="dark",
             panel_position_px=(20, 20),
             panel_width_px=320,
         )
-
         self._dashboard = PygameDashboardView(dashboard_config)
 
-        # --------------------------------------------------------
+        # Debug Bar (optional)
+        self._debug_view: Optional[DebugBarView] = None
+        panel_width = 300
+        panel_height = 240
+        margin = 20
 
-        self._current_state: State | None = None
-        self._running: bool = False
+        self._debug_view = DebugBarView(
+            DebugBarConfig(
+                panel_position=(
+                    config.width - panel_width - margin,
+                    margin,
+                ),
+                panel_size=(panel_width, panel_height),
+                max_abs_value=10.0,
+            )
+        )
 
-        # Dashboard metrics (externally updatable)
+        # State
+        self._current_state: Optional[State] = None
         self._score: float = 0.0
         self._lap_time: float = 0.0
 
-    # ------------------------------------------------------------
+        # Debug values
+        self._debug_accel: float = 0.0
+        self._debug_u_lat: float = 0.0
+        self._debug_u_head: float = 0.0
+        self._debug_speed_error: float = 0.0
+        self._debug_lateral_error: float = 0.0
+        self._debug_heading_error: float = 0.0
+
+        self._running: bool = False
+
+    # ============================================================
     # PUBLIC API
-    # ------------------------------------------------------------
+    # ============================================================
 
     def update_state(
         self,
@@ -183,15 +180,21 @@ class App:
         *,
         score: float | None = None,
         lap_time: float | None = None,
+        debug_values: tuple[float, float, float, float, float, float] | None = None,
     ) -> None:
         """
-        Update vehicle state snapshot and optional metrics.
+        Update GUI snapshot.
 
         Parameters
         ----------
         state : State
+            Immutable state from simulation.
         score : float | None
+            Optional score update.
         lap_time : float | None
+            Optional lap time update.
+        debug_values : tuple[float, float, float] | None
+            Optional (acceleration, u_lat, u_head, speed_error, heading_error, lateral_error ).
         """
         self._current_state = state
 
@@ -201,10 +204,17 @@ class App:
         if lap_time is not None:
             self._lap_time = float(lap_time)
 
+        if debug_values is not None:
+            self._debug_accel = float(debug_values[0])
+            self._debug_u_lat = float(debug_values[1])
+            self._debug_u_head = float(debug_values[2])
+            self._debug_speed_error = float(debug_values[3])
+            self._debug_lateral_error = float(debug_values[4])
+            self._debug_heading_error = float(debug_values[5])
+
+    # ------------------------------------------------------------
+
     def run(self) -> None:
-        """
-        Start GUI loop.
-        """
         self._running = True
 
         while self._running:
@@ -214,28 +224,23 @@ class App:
 
         pygame.quit()
 
+    # ------------------------------------------------------------
+
     def stop(self) -> None:
-        """
-        Stop GUI loop.
-        """
         self._running = False
 
-    # ------------------------------------------------------------
-    # INTERNAL
-    # ------------------------------------------------------------
+    # ============================================================
+    # INTERNALS
+    # ============================================================
 
     def _handle_events(self) -> None:
-        """
-        Handle window events.
-        """
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self._running = False
 
+    # ------------------------------------------------------------
+
     def _render(self) -> None:
-        """
-        Render frame.
-        """
         self._screen.fill(self._config.background_color)
 
         self._track_view.draw(self._screen)
@@ -243,7 +248,6 @@ class App:
         if self._current_state is not None:
             self._agent_view.draw(self._screen, self._current_state)
 
-            # Dashboard
             self._dashboard.draw(
                 self._screen,
                 state=self._current_state,
@@ -251,5 +255,16 @@ class App:
                 lap_time=self._lap_time,
                 fps=self._clock.get_fps(),
             )
+
+            if self._debug_view is not None:
+                self._debug_view.draw(
+                    self._screen,
+                    acceleration=self._debug_accel,
+                    u_lat=self._debug_u_lat,
+                    u_head=self._debug_u_head,
+                    speed_error=self._debug_speed_error,
+                    heading_error=self._debug_heading_error,
+                    lateral_error=self._debug_lateral_error
+                )
 
         pygame.display.flip()

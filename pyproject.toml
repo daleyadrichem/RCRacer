@@ -19,23 +19,24 @@ classifiers = [
 ]
 
 dependencies = [
-    "numpy>=2.2.6",
-    "pygame>=2.6.1",
+    "numpy",
+    "pygame",
+    "cmaes"
 ]
 
 [project.optional-dependencies]
 dev = [
-    "ruff>=0.6.0",
-    "pytest>=8.0.0",
-    "mypy>=1.10.0",
+    "ruff",
+    "pytest",
+    "mypy",
 ]
 api = [
-    "fastapi>=0.110",
-    "uvicorn>=0.27",
+    "fastapi",
+    "uvicorn",
 ]
 docs = [
-    "sphinx>=7.0.0",
-    "sphinx-autobuild>=2024.0.0",
+    "sphinx",
+    "sphinx-autobuild",
 ]
 
 [build-system]

@@ -168,6 +168,19 @@ wheels = [
 ]
 
 [[package]]
+name = "cmaes"
+version = "0.12.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5b/4b/9633e72dcd9ac28ab72c661feeb7ece5d01b55e7c9b0ef3331fb102e1506/cmaes-0.12.0.tar.gz", hash = "sha256:6aab41eee2f38bf917560a7e7d1ba0060632cd44cdf7ac2a10704da994624182", size = 52779, upload-time = "2025-07-23T07:01:53.576Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/33/57/f78b7ed51b3536cc80b4322db2cbbb9d1f409736b852eef0493d9fd8474d/cmaes-0.12.0-py3-none-any.whl", hash = "sha256:d0e3e50ce28a36294bffa16a5626c15d23155824cf6b0a373db30dbbea9b2256", size = 64519, upload-time = "2025-07-23T07:01:52.358Z" },
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -878,6 +891,7 @@ name = "rc-racer"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "cmaes" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pygame" },
@@ -903,15 +917,16 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.110" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10.0" },
-    { name = "numpy", specifier = ">=2.2.6" },
-    { name = "pygame", specifier = ">=2.6.1" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6.0" },
-    { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0.0" },
-    { name = "sphinx-autobuild", marker = "extra == 'docs'", specifier = ">=2024.0.0" },
-    { name = "uvicorn", marker = "extra == 'api'", specifier = ">=0.27" },
+    { name = "cmaes" },
+    { name = "fastapi", marker = "extra == 'api'" },
+    { name = "mypy", marker = "extra == 'dev'" },
+    { name = "numpy" },
+    { name = "pygame" },
+    { name = "pytest", marker = "extra == 'dev'" },
+    { name = "ruff", marker = "extra == 'dev'" },
+    { name = "sphinx", marker = "extra == 'docs'" },
+    { name = "sphinx-autobuild", marker = "extra == 'docs'" },
+    { name = "uvicorn", marker = "extra == 'api'" },
 ]
 provides-extras = ["dev", "api", "docs"]
 

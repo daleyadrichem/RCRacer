@@ -10,19 +10,8 @@ This module provides ReplayLogger, which logs:
 - reward
 - done
 
-The logger:
-
-- Is deterministic
-- Contains no randomness
-- Has no timestamps
-- Does not depend on GUI
-- Does not depend on controllers
-- Is safe for multiprocessing usage
-
 Log format:
 JSON Lines (one JSON object per step)
-
-This module belongs to the UTILS layer.
 """
 
 from __future__ import annotations

@@ -34,7 +34,8 @@ from rc_racer.environment.reward import RewardSystem, RewardConfig
 from rc_racer.environment.termination import TerminationCondition, TerminationConfig
 from rc_racer.gui.track_view import TrackView, TrackViewConfig
 from rc_racer.gui.agent_view import PygameAgentView, AgentViewConfig
-from rc_racer.agents.pid_controller import PIDLineFollower, PIDConfig
+from rc_racer.gui.debug_bar_view import DebugBarView
+from controllers.controllers.pid_controller import PIDLineFollower, PIDConfig
 from rc_racer.simulation.runner_realtime import (
     RealtimeRunner,
     RunnerConfig,
@@ -58,7 +59,7 @@ def main() -> None:
     # Core components
     # ------------------------------------------------------------
 
-    track = TrackFactory.create("curved_s_track")
+    track = TrackFactory.create("f1_like_closed")
     vehicle_model = VehicleFactory.create_model("default")
 
     collision_checker = CollisionChecker(
@@ -94,11 +95,22 @@ def main() -> None:
     # ------------------------------------------------------------
 
     pid_config = PIDConfig(
-        kp=2.0,
-        ki=0.0,
-        kd=0.6,
-        target_velocity=10.0,
-        speed_kp=2.0,
+        # Lateral (meters -> steering rate)
+        kp_lat=2.5,
+        ki_lat=0.0,
+        kd_lat=0.8,
+
+        # Heading (radians -> steering rate)
+        kp_head=3.0,
+        ki_head=0.0,
+        kd_head=0.4,
+
+        # Speed (m/s -> acceleration)
+        kp_speed=2.0,
+        ki_speed=0.2,
+        kd_speed=0.0,
+
+        target_velocity=8.0,
     )
 
     controller = PIDLineFollower(track=track, config=pid_config)
@@ -122,6 +134,8 @@ def main() -> None:
         screen_offset_px=offset,
     )
 
+    debug_view = DebugBarView()
+            
     running = True
 
     # ------------------------------------------------------------
@@ -138,6 +152,9 @@ def main() -> None:
         screen.fill((25, 25, 25))
         track_view.draw(screen)
         agent_view.draw(screen, state)
+        acceleration, u_lat, u_head = controller.debug_values
+        debug_view.draw(screen, acceleration, u_lat, u_head)
+
         pygame.display.flip()
 
         clock.tick(60)
