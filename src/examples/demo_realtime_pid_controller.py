@@ -59,7 +59,7 @@ def main() -> None:
     # Core components
     # ------------------------------------------------------------
 
-    track = TrackFactory.create("f1_like_closed")
+    track = TrackFactory.create("curved_s_track")
     vehicle_model = VehicleFactory.create_model("default")
 
     collision_checker = CollisionChecker(

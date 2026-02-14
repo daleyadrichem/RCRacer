@@ -74,7 +74,7 @@ def make_environment(track: Track) -> Environment:
         RewardConfig(
             progress_weight=1.0,
             off_track_penalty=100.0,
-            time_penalty=0.025,
+            time_penalty=0.0,
             finish_bonus=300.0,
         )
     )
@@ -196,7 +196,7 @@ def main() -> None:
     # ------------------------------------------------------------
     # Track (immutable, safe to share)
     # ------------------------------------------------------------
-    track = TrackFactory.create("f1_like_closed")
+    track = TrackFactory.create("curved_s_track")
 
     # Multi-seed robustness
     seeds = [0, 1, 2, 3]
@@ -208,8 +208,8 @@ def main() -> None:
         CMAESTrainerConfig(
             genome_size=PIDConfig.genome_size(),
             sigma=1.2,
-            population_size=16,
-            generations=10,
+            population_size=40,
+            generations=100,
             seed=base_seed,
         )
     )
