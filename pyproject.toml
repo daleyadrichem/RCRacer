@@ -54,3 +54,7 @@ ignore_missing_imports = true
 
 [tool.uv]
 package = true
+
+[tool.uv.build]
+package-dir = {"" = "src"}
+packages = ["rc_racer", "controllers"]
