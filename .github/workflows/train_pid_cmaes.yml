@@ -29,7 +29,7 @@ jobs:
       # Run training
       # ------------------------------------------------------------
       - name: Run PID CMA-ES training
-        run: uv run src/controllers/training_scripts/train_cmaes_pid.py
+        run: uv run src/controllers/training_scripts/training_cmaes_pid.py
 
       # ------------------------------------------------------------
       # Upload trained genome (optional)
