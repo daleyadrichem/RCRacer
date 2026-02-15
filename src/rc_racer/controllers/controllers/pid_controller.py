@@ -123,9 +123,9 @@ class PIDConfig(GenomeInterface):
         # Bounds for each parameter
         LOW = np.array(
             [
-                -12.0, -3.0, -6.0,   # lateral
-                -12.0, -3.0, -6.0,   # heading
-                -20.0, -5.0, -10.0,   # speed
+                0.0, 0.0, 0.0,   # lateral
+                0.0, 0.0, 0.0,   # heading
+                0.0, 0.0, 0.0,   # speed
                 2.0,             # target_velocity
             ],
             dtype=np.float64,
@@ -133,9 +133,9 @@ class PIDConfig(GenomeInterface):
 
         HIGH = np.array(
             [
-                12.0, 3.0, 6.0,
-                12.0, 3.0, 6.0,
-                20.0, 5.0, 10.0,
+                20.0, 3.0, 6.0,
+                20.0, 3.0, 6.0,
+                30.0, 5.0, 10.0,
                 30.0,
             ],
             dtype=np.float64,
@@ -233,6 +233,9 @@ class PIDLineFollower(BaseController):
         self._speed_integral = 0.0
         self._speed_prev = 0.0
 
+        # Anti-windup
+        self._integral_limit: float = 50.0
+
         self._debug_last_values: tuple[float, float, float, float, float, float] = (
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0
         )
@@ -285,6 +288,9 @@ class PIDLineFollower(BaseController):
         # Lateral PID
         lat_derivative = lateral_error - self._lat_prev
         self._lat_integral += lateral_error
+        self._lat_integral = float(
+            np.clip(self._lat_integral, -self._integral_limit, self._integral_limit)
+        )
         self._lat_prev = lateral_error
 
         u_lat = (
@@ -296,6 +302,9 @@ class PIDLineFollower(BaseController):
         # Heading PID
         head_derivative = heading_error - self._head_prev
         self._head_integral += heading_error
+        self._head_integral = float(
+            np.clip(self._head_integral, -self._integral_limit, self._integral_limit)
+        )
         self._head_prev = heading_error
 
         u_head = (
@@ -307,6 +316,9 @@ class PIDLineFollower(BaseController):
         # Speed PID
         speed_derivative = speed_error - self._speed_prev
         self._speed_integral += speed_error
+        self._speed_integral = float(
+            np.clip(self._speed_integral, -self._integral_limit, self._integral_limit)
+        )
         self._speed_prev = speed_error
 
         acceleration = (
@@ -315,7 +327,7 @@ class PIDLineFollower(BaseController):
             + self.config.kd_speed * speed_derivative
         )
 
-        steering_rate = -(u_lat + u_head)
+        steering_rate = -(u_lat - u_head)
 
         self._debug_last_values = (
             float(acceleration),

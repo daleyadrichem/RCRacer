@@ -73,7 +73,7 @@ def make_environment(track: Track) -> Environment:
     reward_system = RewardSystem(
         RewardConfig(
             progress_weight=1.0,
-            off_track_penalty=100.0,
+            off_track_penalty=40.0,
             time_penalty=0.0,
             finish_bonus=300.0,
         )
@@ -81,7 +81,7 @@ def make_environment(track: Track) -> Environment:
 
     termination = TerminationCondition(
         total_track_length=track.total_length,
-        config=TerminationConfig(max_steps=2400),
+        config=TerminationConfig(max_steps=1000),
     )
 
     return Environment(
@@ -135,7 +135,7 @@ def evaluate_genome_vector(
         runner = BatchRunner(
             env=env,
             controller=controller,
-            config=BatchRunnerConfig(max_steps=2400),
+            config=BatchRunnerConfig(max_steps=1000),
         )
 
         result = runner.run(seed=seed)
@@ -170,7 +170,7 @@ def parallel_map(
     list[float]
     """
 
-    with ProcessPoolExecutor() as ex:
+    with ProcessPoolExecutor(max_workers=8) as ex:
         futures = [
             ex.submit(fn, z)
             for z in candidates
@@ -204,13 +204,36 @@ def main() -> None:
     # ------------------------------------------------------------
     # CMA-ES Setup
     # ------------------------------------------------------------
+    initial_config = PIDConfig(
+        kp_lat=4.0, ki_lat=0.1, kd_lat=1.0,
+        kp_head=6.0, ki_head=0.1, kd_head=1.5,
+        kp_speed=5.0, ki_speed=0.2, kd_speed=1.0,
+        target_velocity=12.0,
+    )
+
+    # Convert decoded values back to z-space
+    def encode_from_decoded(cfg: PIDConfig) -> FloatArray:
+        LOW = np.array(
+            [0,0,0,0,0,0,0,0,0,2], dtype=np.float64
+        )
+        HIGH = np.array(
+            [12,3,6,12,3,6,20,5,10,30], dtype=np.float64
+        )
+        x = np.array(list(cfg.serialize().values()), dtype=np.float64)
+        u = (x - LOW) / (HIGH - LOW)
+        u = np.clip(u, 1e-6, 1 - 1e-6)
+        return np.log(u / (1 - u))
+
+    mean_init = encode_from_decoded(initial_config)
+
     trainer = CMAESTrainer(
         CMAESTrainerConfig(
             genome_size=PIDConfig.genome_size(),
-            sigma=1.2,
-            population_size=40,
-            generations=100,
+            sigma=0.6,                # smaller initial sigma
+            population_size=48,       # slightly larger population
+            generations=120,
             seed=base_seed,
+            mean_init=mean_init,
         )
     )
 

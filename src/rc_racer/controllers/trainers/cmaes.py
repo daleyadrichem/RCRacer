@@ -24,7 +24,9 @@ CMA-ES.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, Iterable, List, Optional, Sequence, Tuple
+from typing import Callable, List, Optional, Sequence, Tuple
+from rc_racer.controllers.controllers.pid_controller import PIDConfig
+from datetime import datetime
 
 import numpy as np
 from cmaes import CMA
@@ -288,13 +290,17 @@ class CMAESTrainer:
             history.append(stats)
 
             if verbose:
+                decoded = PIDConfig.decode(best_genome)
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
                 print(
+                    f"[{timestamp}] "
                     f"Gen {gen:03d} | "
                     f"best(gen)={best_fitness_gen:10.3f} | "
                     f"mean(gen)={mean_fitness_gen:10.3f} | "
                     f"best(all)={best_fitness:10.3f} | "
-                    f"sigma={sigma:10.6f} | "
-                    f"genome={best_genome}"
+                    f"sigma={sigma:10.6f}\n"
+                    f"  -> {decoded}"
                 )
 
             if on_generation is not None and best_genome is not None:
