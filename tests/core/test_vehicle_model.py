@@ -1,6 +1,4 @@
 """
-test_vehicle_model.py
-
 Unit tests for VehicleModel.
 
 These tests verify:
@@ -9,9 +7,6 @@ These tests verify:
 - Lateral acceleration saturation
 - Drag model effects
 - Vectorized consistency
-
-Architecture reference:
-:contentReference[oaicite:2]{index=2}
 """
 
 from __future__ import annotations

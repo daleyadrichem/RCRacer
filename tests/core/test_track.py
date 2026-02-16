@@ -1,6 +1,4 @@
 """
-test_track.py
-
 Unit tests for the Track class in core.track.
 
 These tests validate:
@@ -10,8 +8,6 @@ These tests validate:
 - Projection correctness
 - Inside/outside detection
 - Immutability constraints
-
-All tests are deterministic and contain no randomness.
 """
 
 from __future__ import annotations
