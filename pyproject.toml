@@ -21,7 +21,12 @@ classifiers = [
 dependencies = [
     "numpy",
     "pygame",
-    "cmaes"
+    "cmaes",
+    "scipy>=1.15.3",
+    "imageio>=2.37.2",
+    "imageio-ffmpeg>=0.6.0",
+    "tqdm>=4.67.3",
+    "casadi>=3.7.2",
 ]
 
 [project.optional-dependencies]

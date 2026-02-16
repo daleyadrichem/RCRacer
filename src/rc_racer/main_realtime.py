@@ -29,7 +29,7 @@ from rc_racer.simulation.runner_realtime import (
 )
 from rc_racer.gui.app import App, AppConfig
 from rc_racer.controllers.controllers.pid_controller import PIDLineFollower, PIDConfig
-
+from rc_racer.controllers.controllers.mpcc_controller import MpccController
 
 # ================================================================
 # ENVIRONMENT BUILDER
@@ -57,7 +57,7 @@ def build_environment() -> tuple[Environment, object]:
     termination = TerminationCondition(
         total_track_length=track.total_length,
         config=TerminationConfig(
-            max_steps=10_000,
+            max_steps=5000,
             allow_reverse=False,
         ),
     )
@@ -85,21 +85,22 @@ def main() -> None:
     """
     env, track = build_environment()
 
-    controller = PIDLineFollower(
-        track=track,
-        config=PIDConfig(
-            kp_lat=6.775,
-            ki_lat=1.907,
-            kd_lat=3.714,
-            kp_head=1.353,
-            ki_head=2.432,
-            kd_head=2.355,
-            kp_speed=1.459,
-            ki_speed=0.972,
-            kd_speed=3.853,
-            target_velocity=10.0,
-        ),
-    )
+    controller = MpccController(track = track, vehicle_params=env._vehicle_model._p)
+    # controller = PIDLineFollower(
+    #     track=track,
+    #     config=PIDConfig(
+    #         kp_lat=2.699,
+    #         ki_lat=0.019,
+    #         kd_lat=1.429,
+    #         kp_head=15.853,
+    #         ki_head=0.005,
+    #         kd_head=4.508,
+    #         kp_speed=7.499,
+    #         ki_speed=0.189,
+    #         kd_speed=0.439,
+    #         target_velocity=8.804,
+    #     ),
+    # )
 
     provider = SyncControllerProvider(controller)
 
