@@ -97,7 +97,7 @@ class MpccConfig:
     """
 
     dt: float = 0.02
-    horizon_steps: int = 25
+    horizon_steps: int = 40
     v_ref: float = 14.0
 
     w_contour: float = 8.0
@@ -157,7 +157,7 @@ class MpccController(BaseController):
         self._debug_last: Dict[str, float] = {}
 
         # Build solver once
-        self._solver, self._nlp_struct = self._build_solver()
+        self._solver, self._nlp_struct, self._cost_fun = self._build_solver()
 
     # ==========================================================
     # Lifecycle
@@ -220,6 +220,9 @@ class MpccController(BaseController):
             sr0 = float(u_opt[1])
 
             stats = self._solver.stats()
+
+            costs = self._cost_fun(z_opt, pvec)
+
             self._debug_last = {
                 "success": float(bool(stats.get("success", False))),
                 "iters": float(stats.get("iter_count", 0)),
@@ -229,6 +232,13 @@ class MpccController(BaseController):
                 "s0": float(s0),
                 "x_proj": float(proj[0]),
                 "y_proj": float(proj[1]),
+                "cost_total": float(costs[0]),
+                "cost_contour": float(costs[1]),
+                "cost_lag": float(costs[2]),
+                "cost_speed": float(costs[3]),
+                "cost_control": float(costs[4]),
+                "cost_vmin": float(costs[5]),
+                "cost_slack": float(costs[6]),
             }
 
             return a0, sr0
@@ -308,7 +318,7 @@ class MpccController(BaseController):
         z0[u_dim:] = s_guess
         return z0
 
-    def _build_solver(self) -> tuple[ca.Function, Dict[str, FloatArray]]:
+    def _build_solver(self) -> tuple[ca.Function, Dict[str, FloatArray], ca.Function]:
         """
         Build the CasADi NLP solver and static bound structures.
 
@@ -371,7 +381,12 @@ class MpccController(BaseController):
         vk = v0
         deltak = delta0
 
-        cost = 0.0
+        cost_contour = 0.0
+        cost_lag = 0.0
+        cost_speed = 0.0
+        cost_control = 0.0
+        cost_vmin = 0.0
+        cost_slack = 0.0
 
         half_width = 0.5 * float(self._track.width)
 
@@ -459,24 +474,32 @@ class MpccController(BaseController):
             g_list.append(-e_cont - (half_width + slack_k))
 
             # MPCC stage cost
-            cost = cost + float(cfg.w_contour) * (e_cont * e_cont)
-            cost = cost + float(cfg.w_lag) * (e_lag * e_lag)
-            cost = cost + float(cfg.w_speed) * ((v_next - float(cfg.v_ref)) ** 2)
-            cost = cost + float(cfg.w_u_acc) * (a_cmd * a_cmd)
-            cost = cost + float(cfg.w_u_steer_rate) * (sr_cmd * sr_cmd)
+            cost_contour += float(cfg.w_contour) * (e_cont * e_cont)
+            cost_lag += float(cfg.w_lag) * (e_lag * e_lag)
+            cost_speed += float(cfg.w_speed) * ((v_next - float(cfg.v_ref)) ** 2)
 
-            # Standstill prevention
+            cost_control += float(cfg.w_u_acc) * (a_cmd * a_cmd)
+            cost_control += float(cfg.w_u_steer_rate) * (sr_cmd * sr_cmd)
+
             v_def = ca.fmax(0.0, float(cfg.v_min) - v_next)
-            cost = cost + float(cfg.w_v_min) * (v_def * v_def)
+            cost_vmin += float(cfg.w_v_min) * (v_def * v_def)
 
-            # Slack penalty (near-hard)
-            cost = cost + float(w_slack) * (slack_k * slack_k)
+            cost_slack += float(w_slack) * (slack_k * slack_k)
 
             # advance
             xk, yk, psik, vk, deltak = x_next, y_next, psi_next, v_next, delta_next
 
+        cost_total = (
+            cost_contour
+            + cost_lag
+            + cost_speed
+            + cost_control
+            + cost_vmin
+            + cost_slack
+        )
+
         g = ca.vertcat(*g_list) if len(g_list) > 0 else ca.MX.zeros(0, 1)
-        nlp = {"x": Z, "f": cost, "g": g, "p": P}
+        nlp = {"x": Z, "f": cost_total, "g": g, "p": P}
 
         # ---- Bounds for decision vars ----
         # Z = [U(2n), S(n)]
@@ -520,4 +543,19 @@ class MpccController(BaseController):
             "lbg": lbg,
             "ubg": ubg,
         }
-        return solver, nlp_struct
+
+        cost_fun = ca.Function(
+            "cost_breakdown",
+            [Z, P],
+            [
+                cost_total,
+                cost_contour,
+                cost_lag,
+                cost_speed,
+                cost_control,
+                cost_vmin,
+                cost_slack,
+            ],
+        )
+
+        return solver, nlp_struct, cost_fun

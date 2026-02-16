@@ -67,7 +67,7 @@ class TrackViewConfig:
     boundary_color: Color = (255, 255, 255)
     centerline_width: int = 2
     boundary_width: int = 3
-    pixels_per_meter: float = 12.0
+    pixels_per_meter: float = 20.0
 
 
 # ================================================================
@@ -93,7 +93,7 @@ class TrackView:
         self,
         track: Track,
         config: TrackViewConfig | None = None,
-        screen_offset_px: Tuple[int, int] = (0, 0),
+        screen_offset_px: Tuple[int, int] | None = None,
     ) -> None:
         """
         Initialize TrackView.
@@ -109,7 +109,7 @@ class TrackView:
         """
         self._track: Track = track
         self._config: TrackViewConfig = config or TrackViewConfig()
-        self._offset_px: Tuple[int, int] = screen_offset_px
+        self._offset_px: Tuple[int, int] = screen_offset_px or (0, 0)
 
         # Cached immutable references
         self._centerline: FloatArray = self._track.centerline
@@ -150,6 +150,16 @@ class TrackView:
     # ------------------------------------------------------------
     # Drawing
     # ------------------------------------------------------------
+    def set_screen_offset(self, offset_px: Tuple[int, int]) -> None:
+        """
+        Update dynamic screen offset (camera).
+
+        Parameters
+        ----------
+        offset_px : tuple[int, int]
+            New world-to-screen offset in pixels.
+        """
+        self._offset_px = offset_px
 
     def draw(self, surface: pygame.Surface) -> None:
         """

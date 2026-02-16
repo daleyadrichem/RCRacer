@@ -34,7 +34,6 @@ from rc_racer.gui.dashboard_view import (
     PygameDashboardView,
     make_dashboard_theme,
 )
-from rc_racer.gui.debug_bar_view import DebugBarView, DebugBarConfig
 
 
 Color = Tuple[int, int, int]
@@ -70,7 +69,7 @@ class AppConfig:
 
     width: int = 1200
     height: int = 700
-    pixels_per_meter: float = 6.0
+    pixels_per_meter: float = 20.0
     background_color: Color = (25, 25, 25)
     screen_offset_px: Tuple[int, int] = (100, 400)
     window_title: str = "RC Racer"
@@ -138,35 +137,10 @@ class App:
         )
         self._dashboard = PygameDashboardView(dashboard_config)
 
-        # Debug Bar (optional)
-        self._debug_view: Optional[DebugBarView] = None
-        panel_width = 300
-        panel_height = 240
-        margin = 20
-
-        self._debug_view = DebugBarView(
-            DebugBarConfig(
-                panel_position=(
-                    config.width - panel_width - margin,
-                    margin,
-                ),
-                panel_size=(panel_width, panel_height),
-                max_abs_value=10.0,
-            )
-        )
-
         # State
         self._current_state: Optional[State] = None
         self._score: float = 0.0
         self._lap_time: float = 0.0
-
-        # Debug values
-        self._debug_accel: float = 0.0
-        self._debug_u_lat: float = 0.0
-        self._debug_u_head: float = 0.0
-        self._debug_speed_error: float = 0.0
-        self._debug_lateral_error: float = 0.0
-        self._debug_heading_error: float = 0.0
 
         self._running: bool = False
 
@@ -180,7 +154,7 @@ class App:
         *,
         score: float | None = None,
         lap_time: float | None = None,
-        debug_values: tuple[float, float, float, float, float, float] | None = None,
+        debug_values: dict[str, float] | None = None,
     ) -> None:
         """
         Update GUI snapshot.
@@ -205,12 +179,11 @@ class App:
             self._lap_time = float(lap_time)
 
         if debug_values is not None:
-            self._debug_accel = float(debug_values[0])
-            self._debug_u_lat = float(debug_values[1])
-            self._debug_u_head = float(debug_values[2])
-            self._debug_speed_error = float(debug_values[3])
-            self._debug_lateral_error = float(debug_values[4])
-            self._debug_heading_error = float(debug_values[5])
+            self._debug_values = {
+                str(k): float(v)
+                for k, v in debug_values.items()
+            }
+
 
     # ------------------------------------------------------------
 
@@ -232,6 +205,34 @@ class App:
     # ============================================================
     # INTERNALS
     # ============================================================
+    def _update_camera(self) -> None:
+        """
+        Update camera offset so that the vehicle remains centered on screen.
+
+        Notes
+        -----
+        - Purely visual transformation.
+        - Does not modify simulation.
+        """
+        if self._current_state is None:
+            return
+
+        ppm = self._config.pixels_per_meter
+
+        screen_cx = self._config.width // 2
+        screen_cy = self._config.height // 2
+
+        offset_x = int(screen_cx - self._current_state.x * ppm)
+        offset_y = int(screen_cy + self._current_state.y * ppm)
+
+        offset = (offset_x, offset_y)
+
+        print("Offset:", offset)
+
+
+        self._track_view.set_screen_offset(offset)
+        self._agent_view.set_screen_offset(offset)
+
 
     def _handle_events(self) -> None:
         for event in pygame.event.get():
@@ -241,8 +242,10 @@ class App:
     # ------------------------------------------------------------
 
     def _render(self) -> None:
+        print("State:", self._current_state)
         self._screen.fill(self._config.background_color)
 
+        self._update_camera()
         self._track_view.draw(self._screen)
 
         if self._current_state is not None:
@@ -255,16 +258,5 @@ class App:
                 lap_time=self._lap_time,
                 fps=self._clock.get_fps(),
             )
-
-            if self._debug_view is not None:
-                self._debug_view.draw(
-                    self._screen,
-                    acceleration=self._debug_accel,
-                    u_lat=self._debug_u_lat,
-                    u_head=self._debug_u_head,
-                    speed_error=self._debug_speed_error,
-                    heading_error=self._debug_heading_error,
-                    lateral_error=self._debug_lateral_error
-                )
 
         pygame.display.flip()

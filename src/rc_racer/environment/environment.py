@@ -209,6 +209,9 @@ class Environment:
         done : bool
         info : dict
         """
+        
+        print("ACTION RECEIVED:", action)
+
         if self._state is None:
             raise RuntimeError("Environment must be reset before stepping.")
 

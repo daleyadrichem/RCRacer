@@ -258,12 +258,12 @@ def _closed_challenging(
 
 def _f1_like_closed(
     num_points_per_segment: int = 200,
-    width: float = 12.0,
+    width: float = 20.0,
 ) -> Track:
     """
-    Create a Monza-inspired closed circuit scaled down by factor 5.
+    Create a Barcelona-inspired closed circuit scaled down by factor 5.
 
-    All geometric dimensions from the original Monza-like layout
+    All geometric dimensions from the original Barcelona-like layout
     are divided by 5 while preserving proportions.
 
     Parameters
@@ -278,50 +278,67 @@ def _f1_like_closed(
     Track
         Immutable closed Track instance.
     """
-
-
-
     segments: list[np.ndarray] = []
 
     # ------------------------------------------------------------
     # Start/Finish Straight
     # ------------------------------------------------------------
-    p_start = np.array([0.0, 0.0])
-    p_t1 = np.array([30.0, 0.0])
-    segments.append(_straight_section(p_start, p_t1, num_points_per_segment))
+    segments.append(_straight_section(np.array([0.0, 0.0]), np.array([-100.0, 0.0]), num_points_per_segment))
 
-    segments.append(
-        _arc_section(center=np.array([30.0, 10.0]), radius=10.0,
-            start_angle=-np.pi / 2.0, end_angle=0.0, num_points_per_segment=num_points_per_segment)
-    )
+    segments.append(_arc_section(center=np.array([-100.0, 20.0]), radius=20.0, start_angle=-np.pi / 2.0, end_angle=-np.pi, num_points_per_segment=num_points_per_segment) )
 
-    segments.append(
-        _arc_section(center=np.array([50.0, 10.0]), radius=10.0,
-            start_angle=np.pi, end_angle=0.0, num_points_per_segment=num_points_per_segment)
-    )
+    segments.append(_arc_section(center=np.array([-140.0, 20.0]), radius=20.0,  start_angle=0.0, end_angle=np.pi/2, num_points_per_segment=num_points_per_segment) )
 
-    segments.append(_straight_section(np.array([60.0, 10.0]), np.array([60.0, -10.0]), num_points_per_segment))
+    segments.append(_arc_section(center=np.array([-140.0, 100.0]), radius=60.0,  start_angle=-np.pi / 2.0, end_angle=-3*np.pi/2, num_points_per_segment=num_points_per_segment) )
+
+    segments.append(_straight_section(np.array([-140.0, 160.0]), np.array([-60.0, 160.0]), num_points_per_segment))
     
-    segments.append(_hermite_s_section(
-        start=(60.0, -10.0),
-        start_angle=-np.pi/2,   # pointing down
-        end=(70.0, -30.0),
-        end_angle=-np.pi/2,     # also pointing down
-        num_points=num_points_per_segment,
-        tangent_scale=0.8,
-    ))
+    segments.append(_arc_section(center=np.array([-60.0, 150.0]), radius=10.0, start_angle=np.pi / 2.0, end_angle=0.0, num_points_per_segment=num_points_per_segment) )
 
-    segments.append(
-        _arc_section(center=np.array([60.0, -30.0]), radius=10.0,
-            start_angle=0.0, end_angle=-np.pi/2, num_points_per_segment=num_points_per_segment)
-    )
-
-    segments.append(_straight_section(np.array([60.0, -40.0]), np.array([0.0, -40.0]), num_points_per_segment))
+    segments.append(_arc_section(center=np.array([-80.0, 150.0]), radius=30.0, start_angle=0.0, end_angle=-np.pi/2, num_points_per_segment=num_points_per_segment) )
     
-    segments.append(
-        _arc_section(center=np.array([0.0, -20.0]), radius=20.0,
-            start_angle=-np.pi/2, end_angle=-(3*np.pi)/2, num_points_per_segment=num_points_per_segment)
-    )
+    segments.append(_straight_section(np.array([-80.0, 120.0]), np.array([-100.0, 120.0]), num_points_per_segment))
+
+    segments.append(_arc_section(center=np.array([-100.0, 110.0]), radius=10.0, start_angle=np.pi / 2.0, end_angle=5*np.pi/4, num_points_per_segment=num_points_per_segment) )
+
+    segments.append(_straight_section(np.array([-100 - 10 * np.sqrt(2) / 2, 110 - 10*np.sqrt(2) / 2]), np.array([-80 - 10*np.sqrt(2) / 2, 90 - 10*np.sqrt(2) / 2]), num_points_per_segment))
+
+    segments.append(_arc_section(center=np.array([-80 + 10*np.sqrt(2), 90 + 20*np.sqrt(2)/2]), radius=30.0, start_angle=5*np.pi/4, end_angle=3*np.pi/2, num_points_per_segment=num_points_per_segment) )
+
+    segments.append(_straight_section(np.array([-80 + 10*np.sqrt(2) , 60 + 20*np.sqrt(2)/2]), np.array([-60 + 10*np.sqrt(2) , 60 + 20*np.sqrt(2)/2]), num_points_per_segment))
+
+    segments.append(_arc_section(center=np.array([-60 + 10*np.sqrt(2) , 80 + 20*np.sqrt(2)/2]), radius=20.0, start_angle=-np.pi/2, end_angle=0.0, num_points_per_segment=num_points_per_segment) )
+
+    segments.append(_arc_section(center=np.array([-10 + 10*np.sqrt(2) , 80 + 20*np.sqrt(2)/2]), radius=30.0, start_angle=np.pi, end_angle=5*np.pi/6, num_points_per_segment=num_points_per_segment) )
+
+    segments.append(_straight_section(np.array([-10 + 10*np.sqrt(2) - 30*np.sqrt(3)/2 , 95 + 20*np.sqrt(2)/2]), np.array([5 + 10*np.sqrt(2) - 30*np.sqrt(3)/2 , 95 + 15*np.sqrt(3) + 20*np.sqrt(2)/2]), num_points_per_segment))
+
+    segments.append(_arc_section(center=np.array([5 + 10*np.sqrt(2), 80 + 15*np.sqrt(3) + 20*np.sqrt(2)/2]), radius=30.0, start_angle=5*np.pi/6, end_angle=np.pi/3, num_points_per_segment=num_points_per_segment) )
+
+    segments.append(_straight_section(np.array([20 + 10*np.sqrt(2), 80 + 30*np.sqrt(3) + 20*np.sqrt(2)/2]), np.array([20 + 10*np.sqrt(2)+60*np.sqrt(3), 20 + 30*np.sqrt(3) + 20*np.sqrt(2)/2]), num_points_per_segment))
+
+    segments.append(_arc_section(center=np.array([35 + 10*np.sqrt(2)+60*np.sqrt(3), 20 + 45*np.sqrt(3) + 20*np.sqrt(2)/2]), radius=30.0, start_angle=4*np.pi/3, end_angle=5*np.pi/2, num_points_per_segment=num_points_per_segment) )
+
+    segments.append(_arc_section(center=np.array([35 + 10*np.sqrt(2)+60*np.sqrt(3), 70 + 45*np.sqrt(3) + 20*np.sqrt(2)/2]), radius=20.0, start_angle=3*np.pi/2, end_angle=np.pi/2, num_points_per_segment=num_points_per_segment) )
+
+    segments.append(_straight_section(np.array([35 + 10*np.sqrt(2)+60*np.sqrt(3), 90 + 45*np.sqrt(3) + 20*np.sqrt(2)/2]), np.array([60 + 10*np.sqrt(2)+60*np.sqrt(3), 90 + 45*np.sqrt(3) + 20*np.sqrt(2)/2]), num_points_per_segment))
+
+    segments.append(_arc_section(center=np.array([60 + 10*np.sqrt(2)+60*np.sqrt(3), 50 + 45*np.sqrt(3) + 20*np.sqrt(2)/2]), radius=40.0, start_angle=np.pi/2, end_angle=0.0, num_points_per_segment=num_points_per_segment) )
+
+    segments.append(_straight_section(np.array([100 + 10*np.sqrt(2)+60*np.sqrt(3), 50 + 45*np.sqrt(3) + 20*np.sqrt(2)/2]), np.array([100 + 10*np.sqrt(2)+60*np.sqrt(3), 60]), num_points_per_segment))
+
+    segments.append(_arc_section(center=np.array([40 + 10*np.sqrt(2)+60*np.sqrt(3), 60]), radius=60.0, start_angle=0, end_angle=-np.pi/2, num_points_per_segment=num_points_per_segment) )
+
+    segments.append(_straight_section(np.array([40 + 10*np.sqrt(2)+60*np.sqrt(3), 0]), np.array([0, 0]), num_points_per_segment))
+    # segments.append(_hermite_s_section(
+    #     start=(60.0, -10.0),
+    #     start_angle=-np.pi/2,   # pointing down
+    #     end=(70.0, -30.0),
+    #     end_angle=-np.pi/2,     # also pointing down
+    #     num_points=num_points_per_segment,
+    #     tangent_scale=0.8,
+    # ))
+
     
     centerline = np.vstack(segments).astype(np.float64)
 

@@ -108,3 +108,15 @@ class BaseController(ABC):
         tuple[float, float]
         """
         return self.compute_action(state)
+        
+    def get_planned_path(self) -> np.ndarray | None:
+        """
+        Optional: return planned trajectory in world coordinates.
+
+        Returns
+        -------
+        ndarray of shape (N, 2) or None
+            Planned path points in world frame.
+        """
+        return None
+

@@ -6,7 +6,7 @@ Realtime demo entrypoint for RC Racer.
 Architecture Rules
 ------------------
 - Simulation loop is authoritative.
-- Fixed timestep.
+- Fixed timestep owned by Environment.
 - GUI is passive and never steps environment.
 - Deterministic given seed.
 """
@@ -25,11 +25,15 @@ from rc_racer.environment.termination import TerminationCondition, TerminationCo
 from rc_racer.simulation.runner_realtime import (
     RealtimeRunner,
     RunnerConfig,
-    SyncControllerProvider,
+    ThreadedControllerProvider,
 )
 from rc_racer.gui.app import App, AppConfig
-from rc_racer.controllers.controllers.pid_controller import PIDLineFollower, PIDConfig
-from rc_racer.controllers.controllers.mpcc_controller import MpccController, MpccConfig
+from rc_racer.controllers.controllers.pid_controller import (
+    PIDLineFollower,
+    PIDConfig,
+)
+from rc_racer.controllers.controllers.mpcc_controller import MpccConfig, MpccController
+
 
 # ================================================================
 # ENVIRONMENT BUILDER
@@ -68,7 +72,7 @@ def build_environment() -> tuple[Environment, object]:
         collision_checker=collision_checker,
         reward_system=reward_system,
         termination_condition=termination,
-        config=EnvironmentConfig(dt=0.02),
+        config=EnvironmentConfig(dt=0.05),
     )
 
     return env, track
@@ -81,27 +85,34 @@ def build_environment() -> tuple[Environment, object]:
 
 def main() -> None:
     """
-    Launch realtime demo with GUI.
+    Launch realtime demo with threaded controller and GUI.
     """
     env, track = build_environment()
 
-    controller = PIDLineFollower(
+    controller = MpccController(
         track=track,
-        config=PIDConfig(
-            kp_lat=2.699,
-            ki_lat=0.019,
-            kd_lat=1.429,
-            kp_head=15.853,
-            ki_head=0.005,
-            kd_head=4.508,
-            kp_speed=7.499,
-            ki_speed=0.189,
-            kd_speed=0.439,
-            target_velocity=8.804,
+        vehicle_params=env._vehicle_model._p,
+        config=MpccConfig(
+            dt=env.dt,   
+            max_sqp_iter = 5, 
+            v_ref=15.0,
+            w_v_min=5000.0,      
         ),
+    )  
+
+    # ============================================================
+    # Threaded Controller Provider
+    # ============================================================
+
+    provider = ThreadedControllerProvider(
+        controller=controller,
+        default_action=(0.0, 0.0),
+        poll_timeout_s=0.01,
+        queue_maxsize=1,
     )
 
-    provider = SyncControllerProvider(controller)
+    # Start background worker
+    provider.start()
 
     app = App(
         track=track,
@@ -109,7 +120,7 @@ def main() -> None:
             width=1200,
             height=700,
             pixels_per_meter=6.0,
-            show_debug=True
+            show_debug=True,
         ),
     )
 
@@ -134,13 +145,11 @@ def main() -> None:
         if done:
             runner.stop()
 
-
     runner = RealtimeRunner(
         env=env,
         action_provider=provider,
         config=RunnerConfig(
-            dt=env.dt,
-            target_fps=60.0,
+            target_fps=1/env.dt, 
         ),
         on_step=on_step,
     )
@@ -152,10 +161,14 @@ def main() -> None:
     )
 
     sim_thread.start()
-    app.run()
 
-    runner.stop()
-    sim_thread.join(timeout=2.0)
+    try:
+        app.run()
+    finally:
+        # Clean shutdown sequence
+        runner.stop()
+        sim_thread.join(timeout=2.0)
+        provider.stop()
 
 
 if __name__ == "__main__":

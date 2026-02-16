@@ -95,7 +95,7 @@ class AgentViewConfig:
     wheel_length: float = 0.6
     wheel_width: float = 0.25
 
-    pixels_per_meter: float = 12.0
+    pixels_per_meter: float = 20.0
 
     show_heading: bool = True
     show_velocity: bool = True
@@ -103,27 +103,7 @@ class AgentViewConfig:
     show_wheels: bool = True
 
 
-class BaseAgentView(ABC):
-    """
-    Abstract agent renderer.
-    """
-
-    @abstractmethod
-    def draw(self, surface: pygame.Surface, state: State) -> None:
-        """
-        Draw the agent on a pygame surface.
-
-        Parameters
-        ----------
-        surface : pygame.Surface
-            Target rendering surface.
-        state : State
-            Current vehicle state snapshot.
-        """
-        raise NotImplementedError
-
-
-class PygameAgentView(BaseAgentView):
+class PygameAgentView():
     """
     Pygame implementation of AgentView.
 
@@ -372,6 +352,16 @@ class PygameAgentView(BaseAgentView):
     # ------------------------------------------------------------------
     # Public draw
     # ------------------------------------------------------------------
+    def set_screen_offset(self, offset_px: Tuple[int, int]) -> None:
+        """
+        Update dynamic screen offset (camera).
+
+        Parameters
+        ----------
+        offset_px : tuple[int, int]
+            New world-to-screen offset in pixels.
+        """
+        self._offset_px = offset_px
 
     def draw(self, surface: pygame.Surface, state: State) -> None:
         """
