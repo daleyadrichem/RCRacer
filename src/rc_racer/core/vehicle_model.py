@@ -285,7 +285,7 @@ class VehicleModel:
         kappa_eff, a_lat_eff = self._effective_curvature_and_lateral_accel(v, new_steering)
 
         # clip commanded longitudinal accel
-        a_cmd = float(np.clip(a_cmd_raw, -self._p.max_acceleration, self._p.max_acceleration))
+        a_cmd = float(np.clip(a_cmd_raw, -2*self._p.max_acceleration, self._p.max_acceleration))
 
         # friction circle combined-slip limit
         a_fric = self._friction_limited_longitudinal_accel(a_cmd, a_lat_eff)

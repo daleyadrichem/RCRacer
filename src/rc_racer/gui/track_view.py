@@ -120,7 +120,7 @@ class TrackView:
     # World → Screen transform
     # ------------------------------------------------------------
 
-    def _world_to_screen_points(
+    def world_to_screen_points(
         self,
         points_world: FloatArray,
     ) -> List[Tuple[int, int]]:
@@ -217,7 +217,7 @@ class TrackView:
         if points_world.shape[0] < 2:
             return
 
-        screen_pts = self._world_to_screen_points(points_world)
+        screen_pts = self.world_to_screen_points(points_world)
 
         pygame.draw.lines(
             surface,

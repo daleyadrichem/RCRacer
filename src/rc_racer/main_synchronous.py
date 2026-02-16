@@ -68,8 +68,8 @@ class SynchronousConfig:
         Output video file path (used in video mode).
     """
 
-    width: int = 1280
-    height: int = 800
+    width: int = 1920
+    height: int = 1200
     max_steps: int = 10000
     fps: int = 60
     output_path: str = "simulation.mp4"
@@ -169,10 +169,15 @@ def main(mode: Literal["display", "video"]) -> None:
     if mode == "video":
         loop_iter = tqdm(loop_iter, desc="Simulating", unit="step")
 
-    for _ in loop_iter:
+    current_action = (0.0, 0.0)
+    predicted_path = None
 
-        action = controller.compute_action(state)
-        next_state, reward, done, _ = env.step(action)
+    for step in loop_iter:
+        if step % controller._cfg.control_block_steps == 0:
+            current_action = controller.compute_action(state)
+            predicted_path = controller.get_last_predicted_path()
+            
+        next_state, reward, done, _ = env.step(current_action)
 
         total_score += reward
         lap_time += env.dt
@@ -181,6 +186,7 @@ def main(mode: Literal["display", "video"]) -> None:
             next_state,
             score=total_score,
             lap_time=lap_time,
+            predicted_path=predicted_path
         )
 
         app._render()

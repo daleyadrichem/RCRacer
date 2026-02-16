@@ -38,7 +38,7 @@ def _default() -> VehicleParams:
         max_steering_angle=0.6,
         max_steering_rate=1.5,
         max_acceleration=6.0,
-        max_velocity=25.0,
+        max_velocity=30.0,
         mu=1.1,
         g=9.81,
         a_lat_max=7.0,

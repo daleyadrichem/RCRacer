@@ -23,13 +23,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Tuple, Optional
-
+import numpy as np
 import pygame
 
 from rc_racer.core.track import Track
 from rc_racer.core.state import State
 from rc_racer.gui.track_view import TrackView, TrackViewConfig
 from rc_racer.gui.agent_view import PygameAgentView, AgentViewConfig
+from rc_racer.gui.controller_view import ControllerView
 from rc_racer.gui.dashboard_view import (
     PygameDashboardView,
     make_dashboard_theme,
@@ -121,6 +122,12 @@ class App:
             screen_offset_px=config.screen_offset_px,
         )
 
+        # Controller View
+        self._controller_view = ControllerView(
+            track=track,
+            pixels_per_meter=config.pixels_per_meter,
+        )
+
         # Agent View
         self._agent_view = PygameAgentView(
             AgentViewConfig(
@@ -142,6 +149,8 @@ class App:
         self._score: float = 0.0
         self._lap_time: float = 0.0
 
+        self._predicted_path = None
+
         self._running: bool = False
 
     # ============================================================
@@ -155,6 +164,7 @@ class App:
         score: float | None = None,
         lap_time: float | None = None,
         debug_values: dict[str, float] | None = None,
+        predicted_path: np.ndarray | None = None
     ) -> None:
         """
         Update GUI snapshot.
@@ -183,6 +193,10 @@ class App:
                 str(k): float(v)
                 for k, v in debug_values.items()
             }
+
+        if predicted_path is not None:
+            self._predicted_path = predicted_path
+
 
 
     # ------------------------------------------------------------
@@ -247,6 +261,12 @@ class App:
 
         self._update_camera()
         self._track_view.draw(self._screen)
+        self._controller_view.render(
+            surface=self._screen,
+            predicted_path=self._predicted_path,
+            track_view=self._track_view,
+        )
+
 
         if self._current_state is not None:
             self._agent_view.draw(self._screen, self._current_state)
