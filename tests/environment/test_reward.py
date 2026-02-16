@@ -1,166 +1,214 @@
 """
-Unit tests for RewardSystem skeleton.
+Unit tests for rc_racer.environment.reward.
 
-These tests validate:
+These tests validate the deterministic and stateless behavior of
+RewardSystem as defined in the Environment layer.
 
-- Correct configuration structure
-- Proper initialization
-- API contract
-- Deterministic/stateless design expectations
-- That compute() is intentionally unimplemented
+Test Coverage
+-------------
+- Progress reward
+- Time penalty
+- Off-track penalty
+- Finish bonus
+- Combined reward composition
+- Reverse progress handling
+- Determinism
 """
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
-from rc_racer.environment.reward import RewardConfig, RewardSystem
 from rc_racer.core.state import State
+from rc_racer.environment.reward import RewardConfig, RewardSystem
 
 
 # ================================================================
-# FIXTURES
+# Fixtures
 # ================================================================
 
 
-@pytest.fixture()
-def reward_config() -> RewardConfig:
+@pytest.fixture
+def reward_system() -> RewardSystem:
     """
-    Standard test configuration.
+    Create a standard reward system for testing.
+
+    Returns
+    -------
+    RewardSystem
     """
-    return RewardConfig(
-        progress_weight=1.0,
+    config = RewardConfig(
+        progress_weight=2.0,
         off_track_penalty=5.0,
         time_penalty=0.1,
-        finish_bonus=100.0,
+        finish_bonus=50.0,
     )
+    return RewardSystem(config)
 
 
-@pytest.fixture()
-def reward_system(reward_config: RewardConfig) -> RewardSystem:
+def _make_state(progress: float) -> State:
     """
-    Reward system instance.
-    """
-    return RewardSystem(reward_config)
+    Create a minimal valid State with specified progress.
 
+    Parameters
+    ----------
+    progress : float
 
-@pytest.fixture()
-def state_pair() -> tuple[State, State]:
+    Returns
+    -------
+    State
     """
-    Create two valid State instances.
-    """
-    s1: State = State(
+    return State(
         x=0.0,
         y=0.0,
         heading=0.0,
         velocity=1.0,
         steering_angle=0.0,
-        progress_s=10.0,
+        progress_s=progress,
     )
 
-    s2: State = s1.copy_with(progress_s=12.0)
-
-    return s1, s2
-
 
 # ================================================================
-# CONFIG TESTS
+# Tests
 # ================================================================
 
 
-def test_reward_config_is_frozen(reward_config: RewardConfig) -> None:
+def test_progress_reward_only(reward_system: RewardSystem) -> None:
     """
-    RewardConfig must be immutable.
+    Reward should equal progress_weight * delta_progress
+    minus time penalty.
     """
-    with pytest.raises(Exception):
-        reward_config.progress_weight = 2.0  # type: ignore[attr-defined]
+    prev = _make_state(1.0)
+    curr = _make_state(2.5)
+
+    reward = reward_system.compute(
+        prev,
+        curr,
+        is_off_track=False,
+        lap_completed=False,
+    )
+
+    expected = 2.0 * (1.5) - 0.1
+    assert math.isclose(reward, expected, rel_tol=1e-12)
 
 
-def test_reward_system_stores_config(
-    reward_system: RewardSystem,
-    reward_config: RewardConfig,
-) -> None:
+def test_time_penalty_always_applied(reward_system: RewardSystem) -> None:
     """
-    RewardSystem must store configuration.
+    Time penalty should apply even if no progress.
     """
-    assert reward_system._config == reward_config  # intentional internal check
+    prev = _make_state(1.0)
+    curr = _make_state(1.0)
+
+    reward = reward_system.compute(
+        prev,
+        curr,
+        is_off_track=False,
+        lap_completed=False,
+    )
+
+    expected = -0.1
+    assert math.isclose(reward, expected, rel_tol=1e-12)
 
 
-# ================================================================
-# API CONTRACT TESTS
-# ================================================================
-
-
-def test_compute_signature_exists(
-    reward_system: RewardSystem,
-    state_pair: tuple[State, State],
-) -> None:
+def test_off_track_penalty(reward_system: RewardSystem) -> None:
     """
-    compute() must exist and accept required parameters.
+    Off-track penalty should subtract configured value.
     """
-    s1, s2 = state_pair
+    prev = _make_state(0.0)
+    curr = _make_state(1.0)
 
-    with pytest.raises(NotImplementedError):
-        reward_system.compute(
-            s1,
-            s2,
-            is_off_track=False,
-            lap_completed=False,
-        )
+    reward = reward_system.compute(
+        prev,
+        curr,
+        is_off_track=True,
+        lap_completed=False,
+    )
+
+    expected = 2.0 * 1.0 - 0.1 - 5.0
+    assert math.isclose(reward, expected, rel_tol=1e-12)
 
 
-def test_compute_is_stateless(
-    reward_system: RewardSystem,
-    state_pair: tuple[State, State],
-) -> None:
+def test_finish_bonus(reward_system: RewardSystem) -> None:
     """
-    Multiple calls must not alter system state.
-
-    For skeleton, we ensure consistent NotImplementedError.
+    Finish bonus should be added when lap_completed=True.
     """
-    s1, s2 = state_pair
+    prev = _make_state(9.0)
+    curr = _make_state(10.0)
 
-    with pytest.raises(NotImplementedError):
-        reward_system.compute(
-            s1,
-            s2,
-            is_off_track=False,
-            lap_completed=False,
-        )
+    reward = reward_system.compute(
+        prev,
+        curr,
+        is_off_track=False,
+        lap_completed=True,
+    )
 
-    with pytest.raises(NotImplementedError):
-        reward_system.compute(
-            s1,
-            s2,
-            is_off_track=False,
-            lap_completed=False,
-        )
+    expected = 2.0 * 1.0 - 0.1 + 50.0
+    assert math.isclose(reward, expected, rel_tol=1e-12)
 
 
-# ================================================================
-# STATE IMMUTABILITY GUARD
-# ================================================================
-
-
-def test_state_not_modified_on_compute_attempt(
-    reward_system: RewardSystem,
-    state_pair: tuple[State, State],
-) -> None:
+def test_combined_reward_components(reward_system: RewardSystem) -> None:
     """
-    Even if compute fails, input states must remain unchanged.
+    All components should combine linearly and deterministically.
     """
-    s1, s2 = state_pair
+    prev = _make_state(2.0)
+    curr = _make_state(4.0)
 
-    original_progress_1: float = s1.progress_s
-    original_progress_2: float = s2.progress_s
+    reward = reward_system.compute(
+        prev,
+        curr,
+        is_off_track=True,
+        lap_completed=True,
+    )
 
-    with pytest.raises(NotImplementedError):
-        reward_system.compute(
-            s1,
-            s2,
-            is_off_track=False,
-            lap_completed=False,
-        )
+    expected = (
+        2.0 * 2.0  # progress
+        - 0.1      # time penalty
+        - 5.0      # off-track
+        + 50.0     # finish bonus
+    )
 
-    assert s1.progress_s == original_progress_1
-    assert s2.progress_s == original_progress_2
+    assert math.isclose(reward, expected, rel_tol=1e-12)
+
+
+def test_negative_progress_penalized(reward_system: RewardSystem) -> None:
+    """
+    Negative progress should produce negative reward.
+    """
+    prev = _make_state(5.0)
+    curr = _make_state(4.0)
+
+    reward = reward_system.compute(
+        prev,
+        curr,
+        is_off_track=False,
+        lap_completed=False,
+    )
+
+    expected = 2.0 * (-1.0) - 0.1
+    assert math.isclose(reward, expected, rel_tol=1e-12)
+
+
+def test_stateless_determinism(reward_system: RewardSystem) -> None:
+    """
+    Reward computation must be deterministic and stateless.
+    """
+    prev = _make_state(3.0)
+    curr = _make_state(5.0)
+
+    r1 = reward_system.compute(
+        prev,
+        curr,
+        is_off_track=False,
+        lap_completed=False,
+    )
+
+    r2 = reward_system.compute(
+        prev,
+        curr,
+        is_off_track=False,
+        lap_completed=False,
+    )
+
+    assert r1 == r2
