@@ -63,9 +63,9 @@ class OfflineVideoConfig:
     Configuration for offline video generation.
     """
 
-    width: int = 1280
-    height: int = 720
-    pixels_per_meter: float = 6.0
+    width: int = 1920
+    height: int = 1200
+    pixels_per_meter: float = 5.0
     max_steps: int = 1000
     output_path: str = "simulation.mp4"
     fps: int = 60
@@ -104,7 +104,7 @@ def make_environment(track: Track) -> Environment:
         collision_checker=collision_checker,
         reward_system=reward_system,
         termination_condition=termination,
-        config=EnvironmentConfig(dt=0.02),
+        config=EnvironmentConfig(dt=0.05),
     )
 
 
@@ -124,18 +124,16 @@ def main() -> None:
     # Build simulation
     # ------------------------------------------------------------
 
-    track = TrackFactory.create("curved_s_track")
+    track = TrackFactory.create("f1_like_closed")
     env = make_environment(track)
 
     controller = MpccController(
         track=track,
         vehicle_params=env._vehicle_model._p,
         config=MpccConfig(
-            dt=env.dt,          # MUST match env
-            horizon_steps=25,
+            dt=env.dt,    
             v_ref=15.0,
-            v_min=0.5,           # standstill prevention threshold
-            w_v_min=5000.0,      # strong enough to guarantee movement
+            w_v_min=5000.0,      
         ),
     )    
     # controller = PIDLineFollower(
@@ -205,7 +203,7 @@ def main() -> None:
         for _ in range(cfg.max_steps):
 
             action = controller.compute_action(state)
-            
+
             if _ == 0:
                 print("mpcc action step0:", action, controller.debug_values)
 

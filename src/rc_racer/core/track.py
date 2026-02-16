@@ -83,6 +83,13 @@ class Track:
 
         object.__setattr__(self, "centerline", np.asarray(self.centerline, dtype=np.float64))
 
+        # Remove possible duplicates in the centerline (when stitching segements)
+        cl = self.centerline
+        diffs = np.linalg.norm(np.diff(cl, axis=0), axis=1)
+        mask = np.concatenate(([True], diffs > 1e-9))
+        cl = cl[mask]
+        object.__setattr__(self, "centerline", cl)
+
         arc_lengths = self._compute_arc_lengths(self.centerline)
         object.__setattr__(self, "arc_lengths", arc_lengths)
         object.__setattr__(self, "total_length", float(arc_lengths[-1]))

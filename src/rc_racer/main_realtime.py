@@ -29,7 +29,7 @@ from rc_racer.simulation.runner_realtime import (
 )
 from rc_racer.gui.app import App, AppConfig
 from rc_racer.controllers.controllers.pid_controller import PIDLineFollower, PIDConfig
-from rc_racer.controllers.controllers.mpcc_controller import MpccController
+from rc_racer.controllers.controllers.mpcc_controller import MpccController, MpccConfig
 
 # ================================================================
 # ENVIRONMENT BUILDER
@@ -40,7 +40,7 @@ def build_environment() -> tuple[Environment, object]:
     """
     Construct deterministic environment and track.
     """
-    track = TrackFactory.create("curved_s_track")
+    track = TrackFactory.create("f1_like_closed")
     vehicle_model = VehicleFactory.create_model("default")
 
     collision_checker = CollisionChecker(track)
@@ -85,22 +85,21 @@ def main() -> None:
     """
     env, track = build_environment()
 
-    controller = MpccController(track = track, vehicle_params=env._vehicle_model._p)
-    # controller = PIDLineFollower(
-    #     track=track,
-    #     config=PIDConfig(
-    #         kp_lat=2.699,
-    #         ki_lat=0.019,
-    #         kd_lat=1.429,
-    #         kp_head=15.853,
-    #         ki_head=0.005,
-    #         kd_head=4.508,
-    #         kp_speed=7.499,
-    #         ki_speed=0.189,
-    #         kd_speed=0.439,
-    #         target_velocity=8.804,
-    #     ),
-    # )
+    controller = PIDLineFollower(
+        track=track,
+        config=PIDConfig(
+            kp_lat=2.699,
+            ki_lat=0.019,
+            kd_lat=1.429,
+            kp_head=15.853,
+            ki_head=0.005,
+            kd_head=4.508,
+            kp_speed=7.499,
+            ki_speed=0.189,
+            kd_speed=0.439,
+            target_velocity=8.804,
+        ),
+    )
 
     provider = SyncControllerProvider(controller)
 

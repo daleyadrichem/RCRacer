@@ -17,6 +17,159 @@ FloatArray = NDArray[np.float64]
 
 _track_registry: Registry[Track] = Registry()
 
+# ================================================================
+# Section Generators
+# ================================================================
+
+def _hermite_s_section(
+    *,
+    start: tuple[float, float],
+    start_angle: float,
+    end: tuple[float, float],
+    end_angle: float,
+    num_points: int,
+    tangent_scale: float = 0.3,
+) -> np.ndarray:
+    """
+    Generate a C¹ continuous cubic Hermite curve between two
+    points with specified heading angles.
+
+    Parameters
+    ----------
+    start : tuple[float, float]
+    start_angle : float
+        Heading angle in radians.
+    end : tuple[float, float]
+    end_angle : float
+        Heading angle in radians.
+    num_points : int
+    tangent_scale : float
+        Controls curve tightness.
+
+    Returns
+    -------
+    ndarray (N,2)
+    """
+
+    p0 = np.array(start, dtype=np.float64)
+    p1 = np.array(end, dtype=np.float64)
+
+    chord = p1 - p0
+    chord_length = np.linalg.norm(chord)
+
+    # Tangent magnitudes proportional to chord length
+    m0 = chord_length * tangent_scale * np.array(
+        [np.cos(start_angle), np.sin(start_angle)]
+    )
+
+    m1 = chord_length * tangent_scale * np.array(
+        [np.cos(end_angle), np.sin(end_angle)]
+    )
+
+    t = np.linspace(0.0, 1.0, num_points)
+
+    h00 = 2*t**3 - 3*t**2 + 1
+    h10 = t**3 - 2*t**2 + t
+    h01 = -2*t**3 + 3*t**2
+    h11 = t**3 - t**2
+
+    curve = (
+        h00[:, None] * p0 +
+        h10[:, None] * m0 +
+        h01[:, None] * p1 +
+        h11[:, None] * m1
+    )
+
+    return curve.astype(np.float64)
+
+
+def _curved_s_track_section(
+    *,
+    start: tuple[float, float],
+    length: float,
+    num_points: int,
+    direction: str,
+    amp1: float,
+    freq1: float,
+    amp2: float,
+    freq2: float,
+) -> np.ndarray:
+    """
+    Generate a curved S track section with zero initial slope
+    and support for signed axis directions.
+
+    Parameters
+    ----------
+    start : tuple[float, float]
+        Starting coordinate (x0, y0).
+    length : float
+        Positive segment length.
+    num_points : int
+        Number of discretization points.
+    direction : str
+        One of {"x", "-x", "y", "-y"}.
+    amp1, freq1 : float
+        First cosine component.
+    amp2, freq2 : float
+        Second cosine component.
+
+    Returns
+    -------
+    ndarray of shape (N, 2)
+        Centerline section.
+    """
+    if direction not in ("x", "-x", "y", "-y"):
+        raise ValueError("direction must be one of {'x', '-x', 'y', '-y'}")
+
+    if length <= 0.0:
+        raise ValueError("length must be positive")
+
+    t = np.linspace(0.0, length, num_points, dtype=np.float64)
+
+    # C¹ continuous oscillation (zero slope at t=0)
+    oscillation = (
+        amp1 * (1.0 - np.cos(freq1 * t))
+        + amp2 * (1.0 - np.cos(freq2 * t))
+    )
+
+    x0, y0 = start
+
+    if direction == "x":
+        xs = x0 + t
+        ys = y0 + oscillation
+
+    elif direction == "-x":
+        xs = x0 - t
+        ys = y0 + oscillation
+
+    elif direction == "y":
+        xs = x0 + oscillation
+        ys = y0 + t
+
+    else:  # "-y"
+        xs = x0 + oscillation
+        ys = y0 - t
+
+    return np.column_stack((xs, ys)).astype(np.float64)
+
+
+def _arc_section(
+    center: np.ndarray,
+    radius: float,
+    start_angle: float,
+    end_angle: float,
+    num_points_per_segment: int
+) -> np.ndarray:
+    angles = np.linspace(start_angle, end_angle, num_points_per_segment)
+    x = center[0]  + (radius ) * np.cos(angles)
+    y = center[1]  + (radius ) * np.sin(angles)
+    return np.column_stack((x, y))
+
+def _straight_section(p0: np.ndarray, p1: np.ndarray, num_points_per_segment: int) -> np.ndarray:
+    xs = np.linspace(p0[0] , p1[0] , num_points_per_segment)
+    ys = np.linspace(p0[1] , p1[1] , num_points_per_segment)
+    return np.column_stack((xs, ys))
+
 
 # ================================================================
 # Track Generators
@@ -126,21 +279,7 @@ def _f1_like_closed(
         Immutable closed Track instance.
     """
 
-    def arc(
-        center: np.ndarray,
-        radius: float,
-        start_angle: float,
-        end_angle: float,
-    ) -> np.ndarray:
-        angles = np.linspace(start_angle, end_angle, num_points_per_segment)
-        x = center[0]  + (radius ) * np.cos(angles)
-        y = center[1]  + (radius ) * np.sin(angles)
-        return np.column_stack((x, y))
 
-    def straight(p0: np.ndarray, p1: np.ndarray) -> np.ndarray:
-        xs = np.linspace(p0[0] , p1[0] , num_points_per_segment)
-        ys = np.linspace(p0[1] , p1[1] , num_points_per_segment)
-        return np.column_stack((xs, ys))
 
     segments: list[np.ndarray] = []
 
@@ -148,22 +287,42 @@ def _f1_like_closed(
     # Start/Finish Straight
     # ------------------------------------------------------------
     p_start = np.array([0.0, 0.0])
-    p_t1 = np.array([100.0, 0.0])
-    segments.append(straight(p_start, p_t1))
+    p_t1 = np.array([30.0, 0.0])
+    segments.append(_straight_section(p_start, p_t1, num_points_per_segment))
 
     segments.append(
-        arc(center=np.array([100.0, 30.0]), radius=30.0,
-            start_angle=-np.pi / 2.0, end_angle=0.0)
+        _arc_section(center=np.array([30.0, 10.0]), radius=10.0,
+            start_angle=-np.pi / 2.0, end_angle=0.0, num_points_per_segment=num_points_per_segment)
     )
 
     segments.append(
-        arc(center=np.array([160.0, 30.0]), radius=30.0,
-            start_angle=np.pi, end_angle=0.0)
+        _arc_section(center=np.array([50.0, 10.0]), radius=10.0,
+            start_angle=np.pi, end_angle=0.0, num_points_per_segment=num_points_per_segment)
     )
 
-    segments.append(straight(np.array([190.0, 0.0]), np.array([190.0, 20.0])))
+    segments.append(_straight_section(np.array([60.0, 10.0]), np.array([60.0, -10.0]), num_points_per_segment))
+    
+    segments.append(_hermite_s_section(
+        start=(60.0, -10.0),
+        start_angle=-np.pi/2,   # pointing down
+        end=(70.0, -30.0),
+        end_angle=-np.pi/2,     # also pointing down
+        num_points=num_points_per_segment,
+        tangent_scale=0.8,
+    ))
 
+    segments.append(
+        _arc_section(center=np.array([60.0, -30.0]), radius=10.0,
+            start_angle=0.0, end_angle=-np.pi/2, num_points_per_segment=num_points_per_segment)
+    )
 
+    segments.append(_straight_section(np.array([60.0, -40.0]), np.array([0.0, -40.0]), num_points_per_segment))
+    
+    segments.append(
+        _arc_section(center=np.array([0.0, -20.0]), radius=20.0,
+            start_angle=-np.pi/2, end_angle=-(3*np.pi)/2, num_points_per_segment=num_points_per_segment)
+    )
+    
     centerline = np.vstack(segments).astype(np.float64)
 
     return Track(centerline=centerline, width=width)
