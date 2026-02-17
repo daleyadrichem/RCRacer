@@ -136,9 +136,7 @@ def main(mode: Literal["display", "video"]) -> None:
         track=track,
         vehicle_params=env._vehicle_model._p,
         config=MpccConfig(
-            dt=env.dt,
-            v_ref=30.0,
-            w_v_min=5000.0,
+            dt=env.dt
         ),
     )
 
