@@ -121,6 +121,9 @@ def main(mode: Literal["display", "video"]) -> None:
     """
     Run deterministic synchronous simulation.
 
+    Progress bar is based on driven distance in meters.
+    Only full integer meters are displayed.
+
     Parameters
     ----------
     mode : {"display", "video"}
@@ -129,6 +132,9 @@ def main(mode: Literal["display", "video"]) -> None:
 
     cfg = SynchronousConfig()
 
+    # ------------------------------------------------------------
+    # Create Track + Environment
+    # ------------------------------------------------------------
     track = TrackFactory.create("f1_like_closed")
     env = make_environment(track)
 
@@ -136,7 +142,7 @@ def main(mode: Literal["display", "video"]) -> None:
         track=track,
         vehicle_params=env._vehicle_model._p,
         config=MpccConfig(
-            dt=env.dt
+            dt=env.dt,
         ),
     )
 
@@ -145,17 +151,32 @@ def main(mode: Literal["display", "video"]) -> None:
 
     pygame.init()
 
-    if mode == "display":
-        writer = None
-    else:
+    writer = None
+    pbar = None
+
+    # ------------------------------------------------------------
+    # Video writer + distance progress bar
+    # ------------------------------------------------------------
+    if mode == "video":
         writer = imageio.get_writer(Path(cfg.output_path), fps=cfg.fps)
 
+        total_meters = int(track.total_length)
+        pbar = tqdm(
+            total=total_meters,
+            desc="Distance",
+            unit="m",
+            dynamic_ncols=True,
+        )
+
+    # ------------------------------------------------------------
+    # GUI
+    # ------------------------------------------------------------
     app = App(
         track=track,
         config=AppConfig(
             width=cfg.width,
             height=cfg.height,
-            pixels_per_meter=12.0,  # or whatever you want
+            pixels_per_meter=12.0,
             window_title="RC Racer - Synchronous Mode",
         ),
     )
@@ -163,36 +184,58 @@ def main(mode: Literal["display", "video"]) -> None:
     total_score = 0.0
     lap_time = 0.0
 
-    loop_iter = range(cfg.max_steps)
-    if mode == "video":
-        loop_iter = tqdm(loop_iter, desc="Simulating", unit="step")
-
     current_action = (0.0, 0.0)
     predicted_path = None
 
-    for step in loop_iter:
+    last_meter = 0
+
+    # ------------------------------------------------------------
+    # Authoritative Simulation Loop
+    # ------------------------------------------------------------
+    for step in range(cfg.max_steps):
+
+        # --------------------------------------------------------
+        # Controller
+        # --------------------------------------------------------
         if step % controller._cfg.control_block_steps == 0:
             current_action = controller.compute_action(state)
             predicted_path = controller.get_last_predicted_path()
-            
+
+        # --------------------------------------------------------
+        # Environment Step
+        # --------------------------------------------------------
         next_state, reward, done, _ = env.step(current_action)
 
         total_score += reward
         lap_time += env.dt
 
+        # --------------------------------------------------------
+        # Distance-based progress (INTEGER meters only)
+        # --------------------------------------------------------
+        current_meter = int(min(next_state.progress_s, track.total_length))
+
+        if mode == "video" and pbar is not None:
+            delta = current_meter - last_meter
+            if delta > 0:
+                pbar.update(delta)
+                last_meter = current_meter
+
+        # --------------------------------------------------------
+        # GUI update
+        # --------------------------------------------------------
         app.update_state(
             next_state,
             score=total_score,
             lap_time=lap_time,
-            predicted_path=predicted_path
+            predicted_path=predicted_path,
         )
 
         app._render()
 
-
         if mode == "display":
             pygame.display.flip()
             app._clock.tick(cfg.fps)
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     done = True
@@ -206,11 +249,18 @@ def main(mode: Literal["display", "video"]) -> None:
         if done:
             break
 
+    # ------------------------------------------------------------
+    # Cleanup
+    # ------------------------------------------------------------
     if writer is not None:
         writer.close()
         print(f"Video saved to: {Path(cfg.output_path).resolve()}")
 
+    if pbar is not None:
+        pbar.close()
+
     pygame.quit()
+
 
 
 # ================================================================
