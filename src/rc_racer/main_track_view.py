@@ -21,6 +21,8 @@ from typing import Tuple
 import numpy as np
 from numpy.typing import NDArray
 import pygame
+import json
+from pathlib import Path
 
 from rc_racer.core.track_factory import TrackFactory
 from rc_racer.gui.track_view import TrackView, TrackViewConfig
@@ -55,8 +57,28 @@ def main() -> None:
     """
     Entry point for track demo.
     """
-    track = TrackFactory.create("f1_like_closed")
+    track = TrackFactory.create("curved_s_track")
     config = WindowConfig()
+
+    # ------------------------------------------------------------
+    # Load optimal racing line (Tier-2 result)
+    # ------------------------------------------------------------
+    optimal_path: FloatArray | None = None
+
+    json_path = Path("lap_time_optimal.json")
+
+    if json_path.exists():
+        with json_path.open("r") as f:
+            data = json.load(f)
+
+        traj = data.get("trajectory", [])
+        if len(traj) > 0:
+            optimal_path = np.array(
+                [[pt["x"], pt["y"]] for pt in traj],
+                dtype=np.float64,
+            )
+
+
 
     # ------------------------------------------------------------
     # Compute world bounding box
@@ -123,6 +145,22 @@ def main() -> None:
 
         screen.fill(config.background_color)
         view.draw(screen)
+
+        # ------------------------------------------------------------
+        # Draw optimal racing line
+        # ------------------------------------------------------------
+        if optimal_path is not None and len(optimal_path) > 1:
+            pts = []
+            ppm = view._config.pixels_per_meter
+            ox, oy = offset
+
+            for x, y in optimal_path:
+                px = int(x * ppm + ox)
+                py = int(-y * ppm + oy)
+                pts.append((px, py))
+
+            pygame.draw.lines(screen, (255, 50, 50), False, pts, 2)
+
         pygame.display.flip()
         clock.tick(config.fps)
 
