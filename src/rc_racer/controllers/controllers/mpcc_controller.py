@@ -126,7 +126,7 @@ class MpccConfig:
     w_progress: float = 80.0
 
     # Curvature-aware speed target
-    v_ref_max: float = 30.0
+    v_ref_max: float = 50.0
     a_lat_target_ratio: float = 0.85
     w_speed: float = 6.0
 
